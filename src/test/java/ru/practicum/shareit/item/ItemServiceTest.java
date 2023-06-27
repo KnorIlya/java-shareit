@@ -1,30 +1,26 @@
 package ru.practicum.shareit.item;
 
 import lombok.RequiredArgsConstructor;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.dao.InvalidDataAccessApiUsageException;
 import ru.practicum.shareit.TestValueBuilder;
 import ru.practicum.shareit.exception.NotFoundException;
 import ru.practicum.shareit.exception.PermissionException;
-import ru.practicum.shareit.item.dto.ItemDto;
+import ru.practicum.shareit.item.dto.ItemShortDto;
 import ru.practicum.shareit.item.model.Item;
 import ru.practicum.shareit.user.UserService;
 
-import java.util.HashMap;
+import javax.transaction.Transactional;
+import javax.validation.ConstraintViolationException;
 import java.util.List;
-import java.util.Map;
 
 @SpringBootTest
 @AutoConfigureTestDatabase
 @RequiredArgsConstructor(onConstructor_ = @Autowired)
-@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
+@Transactional
 class ItemServiceTest {
     private final UserService userService;
     private final ItemService itemService;
@@ -38,57 +34,57 @@ class ItemServiceTest {
     class Create {
         @Test
         public void shouldSaveItem() {
-            Item item = TestValueBuilder.createAvailableItem(1L, "Hammer", "Hammer");
+            Item item = TestValueBuilder.createAvailableItemWithoutUser("Hammer", "Hammer");
 
-            ItemDto itemDto = itemService.create(item);
+            ItemShortDto itemShortDto = itemService.create(1L, item);
 
-            Assertions.assertEquals(itemDto.getId(), 1L);
+            Assertions.assertEquals(itemShortDto.getId(), 1L);
         }
 
         @Test
-        public void shouldThrowNotFoundExceptionWhenUserIdAbsent() {
-            Item item = TestValueBuilder.createAvailableItem(null, "Hammer", "Hammer");
+        public void shouldThrowInvalidDataAccessApiUsageExceptionWhenUserIdAbsent() {
+            Item item = TestValueBuilder.createAvailableItemWithoutUser("Hammer", "Hammer");
 
-            Throwable thrown = Assertions.assertThrows(Exception.class, () -> itemService.create(item));
+            Throwable thrown = Assertions.assertThrows(Exception.class, () -> itemService.create(null, item));
 
-            Assertions.assertTrue(thrown instanceof NotFoundException);
+            Assertions.assertTrue(thrown instanceof InvalidDataAccessApiUsageException);
         }
 
         @Test
         public void shouldThrowNotFoundExceptionWhenUserIdNotExist() {
-            Item item = TestValueBuilder.createAvailableItem(9999L, "Hammer", "Hammer");
+            Item item = TestValueBuilder.createAvailableItemWithoutUser("Hammer", "Hammer");
 
-            Throwable thrown = Assertions.assertThrows(Exception.class, () -> itemService.create(item));
+            Throwable thrown = Assertions.assertThrows(Exception.class, () -> itemService.create(999L, item));
 
             Assertions.assertTrue(thrown instanceof NotFoundException);
         }
 
         @Test
         public void shouldThrowViolationExceptionWhenNameAbsent() {
-            Item item = TestValueBuilder.createAvailableItem(1L, null, "Hammer");
+            Item item = TestValueBuilder.createAvailableItemWithoutUser(null, "Hammer");
 
-            Throwable thrown = Assertions.assertThrows(Exception.class, () -> itemService.create(item));
+            Throwable thrown = Assertions.assertThrows(Exception.class, () -> itemService.create(1L, item));
 
-            Assertions.assertTrue(thrown instanceof DataIntegrityViolationException);
+            Assertions.assertTrue(thrown instanceof ConstraintViolationException);
         }
 
         @Test
         public void shouldThrowViolationExceptionWhenDescriptionAbsent() {
-            Item item = TestValueBuilder.createAvailableItem(1L, "Hammer", null);
+            Item item = TestValueBuilder.createAvailableItemWithoutUser("Hammer", null);
 
-            Throwable thrown = Assertions.assertThrows(Exception.class, () -> itemService.create(item));
+            Throwable thrown = Assertions.assertThrows(Exception.class, () -> itemService.create(1L, item));
 
-            Assertions.assertTrue(thrown instanceof DataIntegrityViolationException);
+            Assertions.assertTrue(thrown instanceof ConstraintViolationException);
         }
 
         @Test
         public void shouldThrowViolationExceptionWhenAvailableAbsent() {
-            Item item = TestValueBuilder.createAvailableItem(1L, "Hammer", "Hammer");
+            Item item = TestValueBuilder.createAvailableItemWithoutUser("Hammer", "Hammer");
             item.setAvailable(null);
 
-            Throwable thrown = Assertions.assertThrows(Exception.class, () -> itemService.create(item));
+            Throwable thrown = Assertions.assertThrows(Exception.class, () -> itemService.create(1L, item));
 
-            Assertions.assertTrue(thrown instanceof DataIntegrityViolationException);
+            Assertions.assertTrue(thrown instanceof ConstraintViolationException);
         }
     }
 
@@ -97,36 +93,33 @@ class ItemServiceTest {
 
         @Test
         public void updateItem() {
-            Item item = TestValueBuilder.createAvailableItem(1L, "Hammer", "Hammer");
-            itemService.create(item);
-            Map<String, Object> updated = new HashMap<>(1);
-            updated.put("name", "Keyboard");
+            Item item = TestValueBuilder.createAvailableItemWithoutUser("Hammer", "Hammer");
+            itemService.create(1L, item);
+            item.setName("Keyboard");
 
-            ItemDto update = itemService.update(1L, updated, 1L);
+            Item update = itemService.update(1L, item, 1L);
 
-            Assertions.assertEquals(itemService.getById(1L).getName(), update.getName());
+            Assertions.assertEquals(itemService.getById(1L,1L).getName(), update.getName());
         }
 
         @Test
         public void shouldThrowPermissionExceptionWhenUserIdAbsent() {
-            Item item = TestValueBuilder.createAvailableItem(1L, "Hammer", "Hammer");
-            itemService.create(item);
-            Map<String, Object> updated = new HashMap<>(1);
-            updated.put("name", "Keyboard");
+            Item item = TestValueBuilder.createAvailableItemWithoutUser("Hammer", "Hammer");
+            itemService.create(1L, item);
+            item.setName("Keyboard");
 
-            Throwable thrown = Assertions.assertThrows(Exception.class, () -> itemService.update(1L, updated, null));
+            Throwable thrown = Assertions.assertThrows(Exception.class, () -> itemService.update(1L, item, null));
 
             Assertions.assertTrue(thrown instanceof PermissionException);
         }
 
         @Test
         public void shouldThrowPermissionExceptionWhenNotOwnerUserId() {
-            Item item = TestValueBuilder.createAvailableItem(1L, "Hammer", "Hammer");
-            itemService.create(item);
-            Map<String, Object> updated = new HashMap<>(1);
-            updated.put("name", "Keyboard");
+            Item item = TestValueBuilder.createAvailableItemWithoutUser("Hammer", "Hammer");
+            itemService.create(1L, item);
+            item.setName("Keyboard");
 
-            Throwable thrown = Assertions.assertThrows(Exception.class, () -> itemService.update(1L, updated, 99L));
+            Throwable thrown = Assertions.assertThrows(Exception.class, () -> itemService.update(1L, item, 99L));
 
             Assertions.assertTrue(thrown instanceof PermissionException);
         }
@@ -137,63 +130,63 @@ class ItemServiceTest {
 
         @Test
         public void shouldGetItem() {
-            Item item = TestValueBuilder.createAvailableItem(1L, "Hammer", "Hammer");
-            itemService.create(item);
+            Item item = TestValueBuilder.createAvailableItemWithoutUser("Hammer", "Hammer");
+            itemService.create(1L, item);
 
-            Assertions.assertEquals(itemService.getById(1L).getId(), 1L);
+            Assertions.assertEquals(itemService.getById(1L, 1L).getId(), 1L);
         }
 
         @Test
         public void shouldGetTwoItemsByUser() {
-            Item item1 = TestValueBuilder.createAvailableItem(1L, "Hammer", "Hammer");
-            Item item2 = TestValueBuilder.createAvailableItem(1L, "Hammer", "Hammer");
+            Item item1 = TestValueBuilder.createAvailableItemWithoutUser("Hammer", "Hammer");
+            Item item2 = TestValueBuilder.createAvailableItemWithoutUser("Hammer", "Hammer");
 
-            itemService.create(item1);
-            itemService.create(item2);
+            itemService.create(1L, item1);
+            itemService.create(1L, item2);
 
             Assertions.assertEquals(itemService.getAllByUserId(1L).size(), 2);
         }
 
         @Test
         public void shouldGetOneItemByName() {
-            Item item = TestValueBuilder.createAvailableItem(1L, "Hammer", "Metal");
-            itemService.create(item);
+            Item item = TestValueBuilder.createAvailableItemWithoutUser("Hammer", "Metal");
+            itemService.create(1L, item);
 
-            List<ItemDto> items = itemService.getItemsByText("HaM");
+            List<Item> items = itemService.getItemsByText("HaM");
 
             Assertions.assertEquals(items.size(), 1);
         }
 
         @Test
         public void shouldGetOneItemByDescription() {
-            Item item = TestValueBuilder.createAvailableItem(1L, "Hammer", "Metal");
-            itemService.create(item);
+            Item item = TestValueBuilder.createAvailableItemWithoutUser("Hammer", "Metal");
+            itemService.create(1L, item);
 
-            List<ItemDto> items = itemService.getItemsByText("Met");
+            List<Item> items = itemService.getItemsByText("Met");
 
             Assertions.assertEquals(items.size(), 1);
         }
 
         @Test
         public void shouldGetTwoItemsByDescriptionAndName() {
-            Item item = TestValueBuilder.createAvailableItem(1L, "Hammer", "Hammer");
-            itemService.create(item);
-            Item item1 = TestValueBuilder.createAvailableItem(1L, "Lamp", "Metal");
-            itemService.create(item1);
+            Item item = TestValueBuilder.createAvailableItemWithoutUser("Hammer", "Hammer");
+            itemService.create(1L, item);
+            Item item1 = TestValueBuilder.createAvailableItemWithoutUser("Lamp", "Metal");
+            itemService.create(1L, item1);
 
-            List<ItemDto> items = itemService.getItemsByText("Me");
+            List<Item> items = itemService.getItemsByText("Me");
 
             Assertions.assertEquals(items.size(), 2);
         }
 
         @Test
         public void shouldReturnEmptyWhenTextBlank() {
-            Item item = TestValueBuilder.createAvailableItem(1L, "Hammer", "Hammer");
-            itemService.create(item);
-            Item item1 = TestValueBuilder.createAvailableItem(1L, "Lamp", "Metal");
-            itemService.create(item1);
+            Item item = TestValueBuilder.createAvailableItemWithoutUser("Hammer", "Hammer");
+            itemService.create(1L, item);
+            Item item1 = TestValueBuilder.createAvailableItemWithoutUser("Lamp", "Metal");
+            itemService.create(1L, item1);
 
-            List<ItemDto> items = itemService.getItemsByText(" ");
+            List<Item> items = itemService.getItemsByText(" ");
 
             Assertions.assertTrue(items.isEmpty());
         }

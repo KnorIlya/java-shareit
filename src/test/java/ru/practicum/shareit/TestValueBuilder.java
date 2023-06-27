@@ -19,9 +19,15 @@ public class TestValueBuilder {
                 .build();
     }
 
-    public static Item createAvailableItem(Long userId, String name, String description) {
+    public static User createCustomUserWithoutId(String email, String name) {
+        return User.builder()
+                .email(email)
+                .name(name)
+                .build();
+    }
+
+    public static Item createAvailableItemWithoutUser(String name, String description) {
         return Item.builder()
-                .userId(userId)
                 .name(name)
                 .description(description)
                 .available(true)

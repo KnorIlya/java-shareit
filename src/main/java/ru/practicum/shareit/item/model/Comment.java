@@ -6,7 +6,7 @@ import ru.practicum.shareit.user.model.User;
 
 import javax.persistence.*;
 import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
+import java.time.LocalDateTime;
 
 @Builder
 @Getter
@@ -15,21 +15,21 @@ import javax.validation.constraints.NotNull;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "items")
-public class Item {
+@Table(name = "comments")
+public class Comment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
+    @Column()
+    @NotBlank
+    String text;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "item_id")
+    Item item;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     User user;
-    @NotBlank
-    @Column
-    String name;
-    @NotBlank
     @Column(nullable = false)
-    String description;
-    @NotNull
-    @Column(nullable = false)
-    Boolean available;
+    LocalDateTime created;
+
 }
