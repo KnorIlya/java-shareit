@@ -11,6 +11,7 @@ import ru.practicum.shareit.booking.model.Booking;
 import ru.practicum.shareit.booking.model.EState;
 
 import javax.validation.Valid;
+import javax.validation.constraints.Min;
 import java.util.List;
 
 @RestController
@@ -42,14 +43,18 @@ public class BookingController {
     }
 
     @GetMapping()
-    public ResponseEntity<List<Booking>> getAllByBooker(@RequestParam(required = false) EState state,
-                                                        @RequestHeader(name = "X-Sharer-User-Id") Long userid) {
-        return ResponseEntity.ok(service.findAllByUserIdAndState(userid, state));
+    public ResponseEntity<List<Booking>> getAllByBooker(@RequestParam(required = false, defaultValue = "ALL") EState state,
+                                                        @RequestHeader(name = "X-Sharer-User-Id") Long userid,
+                                                        @Min(0) @RequestParam(required = false, defaultValue = "0") Integer from,
+                                                        @Min(1) @RequestParam(required = false, defaultValue = "10") Integer size) {
+        return ResponseEntity.ok(service.findAll(userid, state, from, size, false));
     }
 
-    @GetMapping("owner")
-    public ResponseEntity<List<Booking>> getAllByOwner(@RequestParam(required = false) EState state,
-                                                       @RequestHeader(name = "X-Sharer-User-Id") Long owner) {
-        return ResponseEntity.ok(service.findAllByOwnerIdAndState(owner, state));
+    @GetMapping("/owner")
+    public ResponseEntity<List<Booking>> getAllByOwner(@RequestParam(required = false, defaultValue = "ALL") EState state,
+                                                       @RequestHeader(name = "X-Sharer-User-Id") Long userid,
+                                                       @Min(0) @RequestParam(required = false, defaultValue = "0") Integer from,
+                                                       @Min(1) @RequestParam(required = false, defaultValue = "10") Integer size) {
+        return ResponseEntity.ok(service.findAll(userid, state, from, size, true));
     }
 }

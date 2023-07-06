@@ -5,6 +5,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.BeanWrapper;
 import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.shareit.exception.NotFoundException;
 import ru.practicum.shareit.user.model.User;
 
@@ -17,10 +18,13 @@ import java.util.stream.Stream;
 public class UserService {
     private final UserRepository repository;
 
+    @Transactional
     public User create(User user) {
         return repository.save(user);
     }
 
+
+    @Transactional
     public User update(Long id, User newUser) {
         return repository.findById(id).map(model -> {
             String[] nulls = getNullPropertyNames(newUser);
@@ -38,15 +42,19 @@ public class UserService {
                 .toArray(String[]::new);
     }
 
+
+    @Transactional
     public User getById(Long id) {
         return repository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Entity not found"));
     }
 
+    @Transactional
     public List<User> getAll() {
         return repository.findAll();
     }
 
+    @Transactional
     public void deleteById(Long id) {
         repository.deleteById(id);
     }

@@ -1,20 +1,26 @@
 package ru.practicum.shareit.item.dto;
 
-import lombok.AccessLevel;
-import lombok.Builder;
-import lombok.Data;
+import lombok.*;
 import lombok.experimental.FieldDefaults;
 
-/**
- * TODO Sprint add-controllers.
- */
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
 
 @Data
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class ItemShortDto {
     Long id;
+
+    @NotBlank
     String name;
+
+    @NotBlank
     String description;
+
+    @NotNull
     Boolean available;
+    Long requestId;
 }
