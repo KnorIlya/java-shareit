@@ -16,7 +16,6 @@
     <name>ShareIt</name>
 
     <properties>
-        <maven.test.skip>true</maven.test.skip>
         <java.version>11</java.version>
     </properties>
 

@@ -14,7 +14,7 @@ import ru.practicum.shareit.user.model.User;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class BookingMapper {
 
-    public Booking toEntity(BookingDto bookingDto, User user, Item item) {
+    public static Booking toEntity(BookingDto bookingDto, User user, Item item) {
         return Booking.builder()
                 .booker(user)
                 .item(item)
@@ -24,7 +24,7 @@ public class BookingMapper {
                 .build();
     }
 
-    public BookingDtoForItem toBookingDtoForItem(Booking booking) {
+    public static BookingDtoForItem toBookingDtoForItem(Booking booking) {
         if (booking == null) {
             return null;
         }

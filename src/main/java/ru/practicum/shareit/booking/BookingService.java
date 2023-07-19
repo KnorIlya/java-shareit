@@ -4,6 +4,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.BeanWrapper;
 import org.springframework.beans.BeanWrapperImpl;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import ru.practicum.shareit.booking.dto.BookingDto;
 import ru.practicum.shareit.booking.model.Booking;
@@ -11,8 +14,8 @@ import ru.practicum.shareit.booking.model.EState;
 import ru.practicum.shareit.booking.model.EStatus;
 import ru.practicum.shareit.exception.BadRequestException;
 import ru.practicum.shareit.exception.NotFoundException;
-import ru.practicum.shareit.item.repository.ItemRepository;
 import ru.practicum.shareit.item.model.Item;
+import ru.practicum.shareit.item.repository.ItemRepository;
 import ru.practicum.shareit.user.UserService;
 import ru.practicum.shareit.user.model.User;
 
@@ -27,13 +30,12 @@ import java.util.stream.Stream;
 public class BookingService {
     private final BookingRepository bookingRepository;
     private final ItemRepository itemRepository;
-    private final BookingMapper mapper;
     private final UserService userService;
 
     public Booking save(BookingDto bookingDto, Long userId) {
         Item item = itemRepository.findById(bookingDto.getItemId()).orElseThrow(() -> new NotFoundException("Item not found"));
         User user = userService.getById(userId);
-        Booking booking = mapper.toEntity(bookingDto, user, item);
+        Booking booking = BookingMapper.toEntity(bookingDto, user, item);
         bookingValidation(booking);
         return bookingRepository.save(booking);
     }
@@ -100,41 +102,100 @@ public class BookingService {
         }
     }
 
-    public List<Booking> findAllByUserIdAndState(Long userId,EState state) {
-
+    public List<Booking> findAll(Long userId, EState state, Integer from, Integer size, boolean owner) {
+        LocalDateTime now = LocalDateTime.now();
         userService.getById(userId);
-        if (state == null || state.equals(EState.ALL)) {
-            return bookingRepository.findAllByBookerIdOrderByStartDesc(userId);
-        } else if (state.equals(EState.PAST)) {
-            return bookingRepository.findAllByBookerIdAndEndBeforeOrderByStartDesc(userId, LocalDateTime.now());
-        } else if (state.equals(EState.CURRENT)) {
-            return bookingRepository.findAllCurrentBookingsByBookerId(userId, LocalDateTime.now());
-        } else if (state.equals(EState.FUTURE)) {
-            return bookingRepository.findAllByBookerIdAndStartAfterOrderByStartDesc(userId, LocalDateTime.now());
-        } else if (state.equals(EState.WAITING)) {
-            return bookingRepository.findAllByBookerIdAndStatusOrderByStartDesc(userId, EStatus.WAITING);
-        } else if (state.equals(EState.REJECTED)) {
-            return bookingRepository.findAllByBookerIdAndStatusOrderByStartDesc(userId, EStatus.REJECTED);
+        PageRequest pageRequest = PageRequest.of(from, size);
+        if (!owner) {
+            return findAllByUserIdAndState(userId, state, pageRequest, now);
+        } else {
+            return findAllByOwnerIdAndState(userId, state, pageRequest, now);
         }
-        throw new BadRequestException("Bad request");
     }
 
-    public List<Booking> findAllByOwnerIdAndState(Long userId, EState state) {
-        userService.getById(userId);
-        if (state == null || state.equals(EState.ALL)) {
-            return bookingRepository.findAllByItemUserIdOrderByStartDesc(userId);
-        } else if (state.equals(EState.PAST)) {
-            return bookingRepository.findAllByItemUserIdAndEndBeforeOrderByStartDesc(userId, LocalDateTime.now());
-        } else if (state.equals(EState.CURRENT)) {
-            return bookingRepository.findAllCurrentBookingsByOwnerId(userId, LocalDateTime.now());
-        } else if (state.equals(EState.FUTURE)) {
-            return bookingRepository.findAllByItemUserIdAndStartAfterOrderByStartDesc(userId, LocalDateTime.now());
-        } else if (state.equals(EState.WAITING)) {
-            return bookingRepository.findAllByItemUserIdAndStatusOrderByStartDesc(userId, EStatus.WAITING);
-        } else if (state.equals(EState.REJECTED)) {
-            return bookingRepository.findAllByItemUserIdAndStatusOrderByStartDesc(userId, EStatus.REJECTED);
+    private List<Booking> findAllByUserIdAndState(Long userId, EState state, Pageable pageable, LocalDateTime time) {
+        Page<Booking> content;
+        switch (state) {
+            case PAST:
+                content = bookingRepository.findAllByBookerIdAndEndBeforeOrderByStartDesc(userId,
+                        time,
+                        pageable);
+                break;
+            case CURRENT:
+                content = bookingRepository.findAllCurrentBookingsByUserId(userId,
+                        time,
+                        pageable);
+                break;
+            case FUTURE:
+                content = bookingRepository.findAllByBookerIdAndStartAfterOrderByStartDesc(userId,
+                        time,
+                        pageable);
+                break;
+            case WAITING:
+                content = bookingRepository.findAllByBookerIdAndStatusOrderByStartDesc(userId,
+                        EStatus.WAITING,
+                        pageable);
+                break;
+            case REJECTED:
+                content = bookingRepository.findAllByBookerIdAndStatusOrderByStartDesc(userId,
+                        EStatus.REJECTED,
+                        pageable);
+                break;
+            default:
+                content = bookingRepository.findAllByBookerIdOrderByStartDesc(userId,
+                        pageable);
+                break;
         }
-        throw new BadRequestException("Bad request");
+        if (content.isEmpty() && content.getTotalPages() != 0) {
+            return findAllByUserIdAndState(userId, state, getLastPage(content), time);
+        } else {
+            return content.getContent();
+        }
     }
 
+    private List<Booking> findAllByOwnerIdAndState(Long userId, EState state, Pageable pageable, LocalDateTime time) {
+        Page<Booking> content;
+        switch (state) {
+            case PAST:
+                content = bookingRepository.findAllByItemUserIdAndEndBeforeOrderByStartDesc(userId,
+                        time,
+                        pageable);
+                break;
+            case CURRENT:
+                content = bookingRepository.findAllCurrentBookingsByOwnerId(userId,
+                        time,
+                        pageable);
+                break;
+            case FUTURE:
+                content = bookingRepository.findAllByItemUserIdAndStartAfterOrderByStartDesc(userId,
+                        time,
+                        pageable);
+                break;
+            case WAITING:
+                content = bookingRepository.findAllByItemUserIdAndStatusOrderByStartDesc(userId,
+                        EStatus.WAITING,
+                        pageable);
+                break;
+            case REJECTED:
+                content = bookingRepository.findAllByItemUserIdAndStatusOrderByStartDesc(userId,
+                        EStatus.REJECTED,
+                        pageable);
+                break;
+            default:
+                content = bookingRepository.findAllByItemUserIdOrderByStartDesc(userId,
+                        pageable);
+        }
+
+        if (content.isEmpty() && content.getTotalPages() != 0) {
+            return findAllByOwnerIdAndState(userId, state, getLastPage(content), time);
+        } else {
+            return content.getContent();
+        }
+    }
+
+    private Pageable getLastPage(Page<Booking> content) {
+        int from = content.getTotalPages() - 1;
+        int size = content.getSize();
+        return PageRequest.of(from, size);
+    }
 }

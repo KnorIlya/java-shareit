@@ -12,9 +12,9 @@ import ru.practicum.shareit.item.dto.ItemShortDto;
 import ru.practicum.shareit.item.model.Item;
 
 import javax.validation.Valid;
+import javax.validation.constraints.Min;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @Validated
@@ -23,13 +23,12 @@ import java.util.stream.Collectors;
 @LogExecution
 public class ItemController {
     private final ItemService service;
-    private final ItemMapper mapper;
 
     @PostMapping
-    public ResponseEntity<ItemShortDto> create(@Valid @RequestBody Item item,
+    public ResponseEntity<ItemShortDto> create(@Valid @RequestBody ItemShortDto dto,
                                                @RequestHeader(name = "X-Sharer-User-Id") Long userId) {
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.create(userId, item));
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.create(userId, dto));
     }
 
     @PostMapping("/{itemId}/comment")
@@ -39,30 +38,32 @@ public class ItemController {
         return ResponseEntity.ok().body(service.addComment(comment, userId, itemId));
     }
 
-    @GetMapping("{itemId}")
+    @GetMapping("/{itemId}")
     public ResponseEntity<ItemDto> getById(@RequestHeader(name = "X-Sharer-User-Id") Long userId,
                                            @PathVariable Long itemId) {
         return ResponseEntity.ok(service.getById(itemId, userId));
     }
 
-    @GetMapping("search")
-    public ResponseEntity<List<ItemShortDto>> getItemsByText(@RequestParam String text) {
+    @GetMapping("/search")
+    public ResponseEntity<List<ItemShortDto>> getItemsByText(@RequestParam String text,
+                                                             @Min(0) @RequestParam(required = false, defaultValue = "0") Integer from,
+                                                             @Min(1) @RequestParam(required = false, defaultValue = "10") Integer size) {
         if (text.isEmpty()) {
             return ResponseEntity.ok(new ArrayList<>());
         }
-        return ResponseEntity.ok(service.getItemsByText(text).stream()
-                .map(mapper::toShortDto)
-                .collect(Collectors.toList()));
+        return ResponseEntity.ok(service.getItemsByText(text, from, size));
     }
 
     @GetMapping
-    public ResponseEntity<List<ItemDto>> getAllByUserId(@RequestHeader(name = "X-Sharer-User-Id") Long id) {
-        return ResponseEntity.ok(service.getAllByUserId(id));
+    public ResponseEntity<List<ItemDto>> getAllByUserId(@RequestHeader(name = "X-Sharer-User-Id") Long id,
+                                                        @Min(0) @RequestParam(required = false, defaultValue = "0") Integer from,
+                                                        @Min(1) @RequestParam(required = false, defaultValue = "10") Integer size) {
+        return ResponseEntity.ok(service.getAllByUserId(id, from, size));
     }
 
-    @PatchMapping(value = "{itemId}")
+    @PatchMapping(value = "/{itemId}")
     public ResponseEntity<ItemShortDto> update(@PathVariable Long itemId, @RequestBody Item item,
                                                @RequestHeader(name = "X-Sharer-User-Id") Long userId) {
-        return ResponseEntity.ok(mapper.toShortDto(service.update(itemId, item, userId)));
+        return ResponseEntity.ok(service.update(itemId, item, userId));
     }
 }
