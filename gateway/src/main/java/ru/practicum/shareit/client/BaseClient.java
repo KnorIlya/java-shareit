@@ -84,7 +84,7 @@ public class BaseClient {
 
         ResponseEntity<Object> shareitServerResponse;
         try {
-            if (parameters != null && !parameters.isEmpty()) {
+            if (parameters != null) {
                 shareitServerResponse = rest.exchange(path, method, requestEntity, Object.class, parameters);
             } else {
                 shareitServerResponse = rest.exchange(path, method, requestEntity, Object.class);
